@@ -9,7 +9,7 @@ import javax.swing.JLabel;
  * Stores information about the cards
  * 
  * @author Stephen Belden
- * @version 201115-02-27
+ * @version 201115-03-13
  */
 public class CardImage extends JLabel {
 	/**

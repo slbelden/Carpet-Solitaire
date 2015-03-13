@@ -3,15 +3,15 @@ package game;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
-import java.awt.Point;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
@@ -25,10 +25,11 @@ import javax.swing.WindowConstants;
  * <p>
  * <b>Caveats:</b> There is an unwanted boarder on the right and bottom sides of
  * the window. This appears to be a side effect of window.setResizable(false)
+ * <p>
  * Some code adapted from Project 2 Solution by Jeffrey Van Baalen
  * 
  * @author Stephen Belden
- * @version 2015-02-27
+ * @version 2015-03-13
  */
 public class Main {
 	/**
@@ -223,10 +224,20 @@ public class Main {
 				.getHeight()));
 		playArea.setOpaque(false);
 		
+		//setup menubar
+		JMenuBar menubar = new JMenuBar();
+		
+		JMenu fileMenu = new JMenu("File");
+		menubar.add(fileMenu);
+		
+		JMenu editMenu = new JMenu("Edit");
+		menubar.add(editMenu);
+		
 		// create and display the window
 		window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		window.setLocationByPlatform(true);
 		window.getContentPane().setBackground(paleGreen);
+		window.setJMenuBar(menubar);
 		window.add(playArea);
 		window.pack();
 		window.setVisible(true);

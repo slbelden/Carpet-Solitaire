@@ -14,7 +14,7 @@ import javax.swing.JOptionPane;
  * the object to which it is attached.
  * 
  * @author Stephen
- * @version 2015-02-13
+ * @version 2015-03-13
  */
 public class Drag implements MouseListener, MouseMotionListener {
 	/**
