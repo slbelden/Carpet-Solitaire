@@ -1,3 +1,5 @@
+package game;
+
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -14,7 +16,7 @@ public class Drag implements MouseListener, MouseMotionListener {
 	/**
 	 * Stores a reference to the object to which this object is attached.
 	 */
-	CardPanel it;
+	CardImage it;
 	/**
 	 * Stores the X and Y coordinates of mouse when first pressed.
 	 */
@@ -23,8 +25,20 @@ public class Drag implements MouseListener, MouseMotionListener {
 	/**
 	 * @param it should match the object to which this listener is attached.
 	 */
-	public Drag(CardPanel it) {
+	public Drag(CardImage it) {
 		this.it = it;
+	}
+	
+	/**
+	 * Activates when the mouse is first pressed down.
+	 * If the card is draggable, it is moved to the top layer,
+	 * and the position of the mouse within the card is recorded.
+	 */
+	public void mousePressed(MouseEvent e) {
+		if(it.isDraggable()){
+			e.getComponent().getParent().setComponentZOrder(e.getComponent(), 0); 
+			difference = e.getPoint();
+		}
 	}
 	
 	/**
@@ -33,7 +47,7 @@ public class Drag implements MouseListener, MouseMotionListener {
 	 * mouse drag motion.
 	 */
 	public void mouseDragged(MouseEvent e) {
-		if(it.getDraggable()){
+		if(it.isDraggable()){
 			//store relevant information
 			Point mouse = e.getPoint();
 			Point origin = it.getLocation();
@@ -45,16 +59,8 @@ public class Drag implements MouseListener, MouseMotionListener {
 		}
 	}
 
-	/**
-	 * Activates when the mouse is first pressed down.
-	 * If the card is draggable, it is moved to the top layer,
-	 * and the position of the mouse within the card is recorded.
-	 */
-	public void mousePressed(MouseEvent e) {
-		if(it.getDraggable()){
-			it.makeTop();
-			difference = e.getPoint();
-		}
+	public void mouseReleased(MouseEvent e){
+		
 	}
 	
 	//these methods are not used, but must be defined from the abstract superclass.
@@ -62,5 +68,4 @@ public class Drag implements MouseListener, MouseMotionListener {
 	public void mouseClicked(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}
 	public void mouseExited(MouseEvent e) {}
-	public void mouseReleased(MouseEvent e) {}
 }
