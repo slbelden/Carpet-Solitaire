@@ -14,7 +14,7 @@ import javax.swing.JOptionPane;
  * the object to which it is attached.
  * 
  * @author Stephen
- * @version 2015-03-13
+ * @version 2015-03-21
  */
 public class Drag implements MouseListener, MouseMotionListener {
 	/**
@@ -68,30 +68,35 @@ public class Drag implements MouseListener, MouseMotionListener {
 	 * All game logic takes place here, after the card is dropped.
 	 */
 	public void mouseReleased(MouseEvent e) {
-		CardImage nearestCard = Main.getNearest(it);
+		CardImage nearestCard = it.getNearest();
+		
+		// options for a single move, initialized to false
 		boolean grayCardAtStart = false;
 		boolean thisIsAnAce = false;
 		boolean legalMove = false;
-
+		
+		// test if this card has been dropped on one of the opening gray spaces
 		if ((nearestCard.getNumber() == 14)
-				&& (Main.getCardIndex(nearestCard) % 14 == 0)) {
+				&& (nearestCard.getIndex() % 14 == 0)) {
 			grayCardAtStart = true;
 		}
-
+		
+		// test if this is an ace
 		if (it.getNumber() == 1) {
 			thisIsAnAce = true;
 		}
-
-		if (!grayCardAtStart
-				&& Main.getCard(Main.getCardIndex(nearestCard) - 1).getNumber() == it
-						.getNumber() - 1
-				&& Main.getCard(Main.getCardIndex(nearestCard) - 1).getSuit() == it
-						.getSuit()) {
+		
+		// test if this was a standard legal move
+		if (!grayCardAtStart && !thisIsAnAce // these two tests must happen first to prevent exceptions
+				&& Main.getCard(nearestCard.getIndex() - 1).getNumber() == it.getNumber() - 1
+				&& Main.getCard(nearestCard.getIndex() - 1).getSuit() == it.getSuit()) {
 			legalMove = true;
 		}
-
+		
+		// swap if this move is placing an ace at the start of a row, or is a standard legal move
+		// otherwise, beep and put the card back where it was
 		if ((grayCardAtStart && thisIsAnAce) || legalMove) {
-			Main.swapCards(it, Main.getNearest(it));
+			it.swap(it.getNearest());
 		} else {
 			java.awt.Toolkit.getDefaultToolkit().beep();
 			Main.redrawInPlace();
@@ -100,17 +105,9 @@ public class Drag implements MouseListener, MouseMotionListener {
 		Main.checkWin();
 	}
 
-	// these methods are not used, but must be defined from the abstract
-	// superclass.
-	public void mouseMoved(MouseEvent arg0) {
-	}
-
-	public void mouseClicked(MouseEvent e) {
-	}
-
-	public void mouseEntered(MouseEvent e) {
-	}
-
-	public void mouseExited(MouseEvent e) {
-	}
+	// these methods are not used, but must be defined from the abstract superclass.
+	public void mouseMoved(MouseEvent arg0) {}
+	public void mouseClicked(MouseEvent e) {}
+	public void mouseEntered(MouseEvent e) {}
+	public void mouseExited(MouseEvent e) {}
 }
