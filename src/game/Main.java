@@ -35,7 +35,6 @@ import java.io.File;
  * <b>Caveats:</b> There is an unwanted boarder on the right and bottom sides of
  * the window. This appears to be a side effect of window.setResizable(false)
  * <p>
- * Some code adapted from Project 2 Solution by Jeffrey Van Baalen
  * 
  * @author Stephen Belden
  * @version 2015-03-21
@@ -291,7 +290,7 @@ public class Main {
 		playLayers.setPreferredSize(new Dimension(grayCards.getWidth(), grayCards.getHeight()));
 		playLayers.setOpaque(false);
 		
-		//initialize statisitics
+		//initialize statistics
 		gamesPlayed = 1;
 		gamesWon = 0;
 		
@@ -306,6 +305,9 @@ public class Main {
 		menubar.add(fileMenu);
 		JMenu editMenu = new JMenu("Edit");
 		menubar.add(editMenu);
+		JMenu helpMenu = new JMenu("Help");
+		menubar.add(helpMenu);
+		
 		
 		// setup menu actions
 		// (actions are final only so that they can be called from other ActionListeners)
@@ -442,6 +444,36 @@ public class Main {
 			}
 		};
 		
+		//help menu
+		final ActionListener rules = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				JOptionPane.showMessageDialog(window, "Rules:"
+						+ "\n\nThe game is won when all 13 cards of each suit are in order"
+						+ "\nfrom left to right, with the blank space on the far right."
+						+ "\nThe order of the suits does not matter."
+						+ "\nCards can only be moved onto blank spaces,"
+						+ "\nand only if the move is legal."
+						+ "\n\nA legal move consists of one of the following:"
+						+ "\nMoving an Ace to the farthest left spot to begin a row."
+						+ "\nMoving a card to the blank space directly to the right of"
+						+ "\nthe card that has the same suit and a face value one less"
+						+ "\nthan the card being moved."
+						+ "\nNo card can be moved to the right of a King or a blank space."
+						+ "\n\nIf no more legal moves are possible, the cards that are not"
+						+ "\nyet in their correct positions can be shuffled by selecting"
+						+ "\nShuffle from the File menu.");
+			}
+		};
+		final ActionListener about = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
+						+ "\nv3.1.6"
+						+ "\n\nStephen Belden"
+						+ "\nsbelden@uwyo.edu"
+						+ "\nhttp://git.io/hy6V");
+			}
+		};
+		
 		// setup menu items and keyboard shortcuts
 		// file menu items
 		JMenuItem newGameItem = new JMenuItem("New Game");
@@ -477,6 +509,14 @@ public class Main {
 		statsItem.addActionListener(stats);
 		statsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, ActionEvent.CTRL_MASK));
 		
+		// help menu items
+		JMenuItem rulesItem = new JMenuItem("Rules...");
+		rulesItem.addActionListener(rules);
+		rulesItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, ActionEvent.CTRL_MASK));
+		JMenuItem aboutItem = new JMenuItem("About...");
+		aboutItem.addActionListener(about);
+		aboutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, ActionEvent.CTRL_MASK));
+		
 		// add menu items to menus
 		fileMenu.add(newGameItem);
 		fileMenu.add(replayItem);
@@ -489,6 +529,9 @@ public class Main {
 		editMenu.add(undoItem);
 		editMenu.add(redoItem);
 		editMenu.add(statsItem);
+		
+		helpMenu.add(rulesItem);
+		helpMenu.add(aboutItem);
 		
 		//=====================================================================
 		// Window Setup
