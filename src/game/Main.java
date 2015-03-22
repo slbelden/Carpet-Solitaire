@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,6 +19,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import javax.swing.WindowConstants;
 
 /**
@@ -62,8 +64,8 @@ public class Main {
 	public static final Color paleGreen = new Color(100, 200, 100);
 	
 	// data fields that are accessed from more than one function
-	public static final List<CardImage> Deck = new ArrayList<CardImage>();
-	public static final List<CardImage> playGrid = new ArrayList<CardImage>();
+	public static List<CardImage> Deck = new ArrayList<CardImage>();
+	public static List<CardImage> playGrid = new ArrayList<CardImage>();
 	public static JPanel playArea = new JPanel();
 	public static JFrame window = new JFrame("Cards");
 		
@@ -73,7 +75,8 @@ public class Main {
 	
 	// fields needed for keeping track of the game state
 	public static short shufflesRemaining;
-	public static Stack<ArrayList<CardImage>> gameStates = new Stack<ArrayList<CardImage>>();
+	public static Stack<List<CardImage>> gameStates = new Stack<List<CardImage>>();
+	public static int currentState;
 	
 	//=========================================================================
 	// Functions
@@ -134,7 +137,20 @@ public class Main {
 	 * @param b the second card, referenced by its location in playArea
 	 */
 	public static void swapCards(CardImage a, CardImage b) {
+
+		// if one or more undos have happened, clear all moves after the current state
+		while(gameStates.size() > currentState){
+			gameStates.pop();
+		}
+
+		// record state for undo/redo system
+		gameStates.add(new ArrayList<CardImage>(playGrid));
+		currentState++;
+		
+		// swap
 		Collections.swap(playGrid, getCardIndex(a), getCardIndex(b));
+
+		// make changes visible
 		redrawInPlace();
 	}
 
@@ -175,6 +191,7 @@ public class Main {
 		
 		// clean up from the last game
 		playGrid.clear();
+		gameStates.clear();
 		
 		// initialize the playing cards in random order
 		if(randomize){ Collections.shuffle(Deck); }
@@ -191,6 +208,9 @@ public class Main {
 		for (int i = 0; i < playGrid.size(); i++) {
 			playArea.add(playGrid.get(i));
 		}
+		
+		// initialize the game state
+		currentState = 0;
 		
 		// reset shuffles
 		shufflesRemaining = 2;
@@ -311,33 +331,46 @@ public class Main {
 		};
 		final ActionListener quit = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				final String[] options = {"Save", "Close Without Saving"};
-				if(JOptionPane.showOptionDialog(window, // root pane
+				final String[] options = {"Save", "Close Without Saving", "Cancel"};
+				int response = JOptionPane.showOptionDialog(window, // root pane 
 						"Do you want to save the current game before quitting?", // text
 						"Quit", // window title
-						JOptionPane.DEFAULT_OPTION, // option dialog type
+						JOptionPane.YES_NO_CANCEL_OPTION, // option dialog type
 						JOptionPane.QUESTION_MESSAGE, // icon type
 						null, // no custom icon
 						options, // button text
-						options[0]) // default option
-						== 1){ // test for second button
-					System.exit(0);
-				} else {
+						options[0]); // default option
+				if(response == 0){ // check for "Save" button
 					save.actionPerformed(arg0);
+					System.exit(0);
+				} else if(response == 1){ // check for "Close Without Saving" option
 					System.exit(0);
 				}
 			}
 		};
 		
-		//edit menu
+		// edit menu
 		final ActionListener undo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				//TODO
+				// if this is the first undo, and if at least one move has been made,
+				// record the state in case we need to redo later
+				if(gameStates.size() == currentState && currentState > 0){
+					gameStates.add(new ArrayList<CardImage>(playGrid));
+				}
+				if(currentState > 0){
+					currentState--;
+					playGrid = gameStates.get(currentState);
+				}
+				redrawInPlace();
 			}
 		};
 		final ActionListener redo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				//TODO
+				if(gameStates.size() > currentState + 1){
+					currentState++;
+					playGrid = gameStates.get(currentState);
+				}
+				redrawInPlace();
 			}
 		};
 		final String[] options = {"Close", "Reset Statistics"};
@@ -358,30 +391,40 @@ public class Main {
 			}
 		};
 		
-		// setup menu items
+		// setup menu items and keyboard shortcuts
 		// file menu items
 		JMenuItem newGameItem = new JMenuItem("New Game");
 		newGameItem.addActionListener(newGame);
+		newGameItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.CTRL_MASK));
 		JMenuItem replayItem = new JMenuItem("Replay");
 		replayItem.addActionListener(replay);
+		replayItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, ActionEvent.CTRL_MASK));
 		JMenuItem shuffleItem = new JMenuItem("Shuffle");
 		shuffleItem.addActionListener(shuffle);
+		shuffleItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, ActionEvent.CTRL_MASK));
 		JMenuItem openItem = new JMenuItem("Open...");
 		openItem.addActionListener(open);
+		openItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
 		JMenuItem saveItem = new JMenuItem("Save");
 		saveItem.addActionListener(save);
+		saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
 		JMenuItem saveAsItem = new JMenuItem("Save As...");
 		saveAsItem.addActionListener(saveAs);
+		saveAsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK + ActionEvent.SHIFT_MASK));
 		JMenuItem quitItem = new JMenuItem("Quit");
 		quitItem.addActionListener(quit);
+		quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
 		
 		// edit menu items
 		JMenuItem undoItem = new JMenuItem("Undo");
 		undoItem.addActionListener(undo);
+		undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, ActionEvent.CTRL_MASK));
 		JMenuItem redoItem = new JMenuItem("Redo");
 		redoItem.addActionListener(redo);
+		redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, ActionEvent.CTRL_MASK));
 		JMenuItem statsItem = new JMenuItem("Statistics...");
 		statsItem.addActionListener(stats);
+		statsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, ActionEvent.CTRL_MASK));
 		
 		// add menu items to menus
 		fileMenu.add(newGameItem);
