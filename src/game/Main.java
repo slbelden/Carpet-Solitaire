@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Stack;
 
 import javax.swing.BorderFactory;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JMenu;
@@ -21,6 +22,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.WindowConstants;
+import javax.swing.filechooser.FileNameExtensionFilter;
+
+import java.io.File;
 
 /**
  * A carpet solitaire game.
@@ -68,6 +72,7 @@ public class Main {
 	public static List<CardImage> playGrid = new ArrayList<CardImage>();
 	public static JPanel playArea = new JPanel();
 	public static JFrame window = new JFrame("Cards");
+	public static File filepath = new File("");
 		
 	// frequently used numbers
 	public static final int suitsInOneDeck = 4;
@@ -77,6 +82,8 @@ public class Main {
 	public static short shufflesRemaining;
 	public static Stack<List<CardImage>> gameStates = new Stack<List<CardImage>>();
 	public static int currentState;
+	public static int gamesPlayed;
+	public static int gamesWon;
 	
 	//=========================================================================
 	// Functions
@@ -113,6 +120,8 @@ public class Main {
 		if (correct == playGrid.size()) {
 			JOptionPane.showMessageDialog(window,
 					"You have won Carpet Solitaire!");
+			gamesPlayed++;
+			gamesWon++;
 			initCards(true);
 			redrawInPlace();
 		}
@@ -215,6 +224,11 @@ public class Main {
 		// reset shuffles
 		shufflesRemaining = 2;
 	}
+	
+	public static void save(){
+		// TODO
+		System.out.println("Save was called.");
+	}
 		
 	//=========================================================================
 	// Main
@@ -278,6 +292,10 @@ public class Main {
 		playLayers.setPreferredSize(new Dimension(grayCards.getWidth(), grayCards.getHeight()));
 		playLayers.setOpaque(false);
 		
+		//initialize statisitics
+		gamesPlayed = 1;
+		gamesWon = 0;
+		
 		//=====================================================================
 		// Menubar Setup
 		//=====================================================================
@@ -296,16 +314,16 @@ public class Main {
 		// file menu
 		final ActionListener newGame = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
+				// create new shuffled game
 				initCards(true);
 				redrawInPlace();
-				gameStates.clear();
+				gamesPlayed++;
 			}
 		};
 		final ActionListener replay = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				initCards(false);
 				redrawInPlace();
-				gameStates.clear();
 			}
 		};
 		final ActionListener shuffle = new ActionListener(){
@@ -315,18 +333,47 @@ public class Main {
 		};
 		final ActionListener open = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				//TODO: open, read, and then CLOSE the file
+				// pick a file
+				final FileNameExtensionFilter xml = new FileNameExtensionFilter("xml files", "xml");
+				final JFileChooser fc = new JFileChooser();
+				fc.setFileFilter(xml);
+				int valid = fc.showOpenDialog(window);
+				if(valid == JFileChooser.APPROVE_OPTION) {
+					filepath = fc.getSelectedFile();
+				}
+				
+				// TODO: load the data from the file
+				playGrid.clear();
+				
+				// reset the game state
+				gameStates.clear();
+				currentState = 0;
+			}
+		};
+		// order of actions here is not the same as in the menu, but saveAs
+		// must be defined before save, since it is used in save
+		final ActionListener saveAs = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				// pick a file
+				final FileNameExtensionFilter xml = new FileNameExtensionFilter("xml files", "xml");
+				final JFileChooser fc = new JFileChooser();
+				fc.setFileFilter(xml);
+				fc.setApproveButtonText("Save");
+				fc.setDialogTitle("Save As...");
+				int valid = fc.showOpenDialog(window);
+				if(valid == JFileChooser.APPROVE_OPTION) {
+					filepath = fc.getSelectedFile();
+					save();
+				}
 			}
 		};
 		final ActionListener save = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				//TODO: if a savefile exists, save.
-				// if a save file does not exist, call saveAs
-			}
-		};
-		final ActionListener saveAs = new ActionListener(){
-			public void actionPerformed(ActionEvent arg0) {
-				//TODO
+				if(!filepath.exists()){
+					saveAs.actionPerformed(arg0);
+				} else {
+					save();
+				}
 			}
 		};
 		final ActionListener quit = new ActionListener(){
@@ -373,20 +420,25 @@ public class Main {
 				redrawInPlace();
 			}
 		};
-		final String[] options = {"Close", "Reset Statistics"};
+		final String[] buttonOptions = {"Close", "Reset Statistics Now"};
 		final ActionListener stats = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// keep displaying this dialog until "Close" is pressed
 				while(JOptionPane.showOptionDialog(window, // root pane
-						"stats:\notherstats\nStatistics are stored in your save file.", // text
+						"Statistics for this session:\n\n"
+						+ "Games Played: " + gamesPlayed + "\n"
+						+ "Games Won: " + gamesWon + "\n"
+						+ "Percent Won: " + (((float)gamesWon) / (gamesPlayed) * 100) + "%\n\n"
+						+ "Statistics will be reset when you quit the game.", // text
 						"Statistics", // window title
 						JOptionPane.DEFAULT_OPTION, // option dialog type
 						JOptionPane.PLAIN_MESSAGE, // icon type
 						null, // no custom icon
-						options, // button text
-						options[0]) // default option
+						buttonOptions, // button text
+						buttonOptions[0]) // default option
 						== 1){ // test for second button
-					//TODO: clear statistics from file
+					gamesPlayed = 1;
+					gamesWon = 0;
 				}
 			}
 		};
