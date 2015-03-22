@@ -31,17 +31,14 @@ import java.io.File;
  * Game state can be saved and loaded from a file.
  * Unlimited undo functionality for moves prior to shuffling remaining cards.
  * 
- * <p>
- * <b>Caveats:</b> There is an unwanted boarder on the right and bottom sides of
- * the window. This appears to be a side effect of window.setResizable(false)
- * <p>
+ * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 2015-03-21
+ * @version 2015-03-22
  */
 public class Main {
 	/**
-	 * The number of pixels that a single card .gif image takes up horizontally.
+	 * The number of pixels a single card .gif image takes up horizontally.
 	 * Should always match the actual dimensions of the images being used.
 	 */
 	public static final int CARD_WIDTH = 73;
@@ -78,7 +75,8 @@ public class Main {
 	
 	// fields needed for keeping track of the game state
 	public static short shufflesRemaining;
-	public static Stack<List<CardImage>> gameStates = new Stack<List<CardImage>>();
+	public static Stack<List<CardImage>> gameStates =
+			new Stack<List<CardImage>>();
 	public static int currentState;
 	public static int gamesPlayed;
 	public static int gamesWon;
@@ -106,15 +104,23 @@ public class Main {
 	}
 
 	/**
-	 * @return whether or not the game has been completed
+	 * @return the number of cards that are in the correct positions,
+	 * 		56 for a win.
 	 */
-	public static void checkWin() {
+	public static int checkWin() {
 		int correct = 0;
+		
+		// look at every card in the grid, test if they are ordered.
+		// tests involving the suit are unnecessary, because the only way for
+		// all four rows of cards to be correctly ordered via legal moves is
+		// for every card in a row to be of the same suit.
 		for (int i = 0; i < playGrid.size(); i++) {
 			if (getCard(i).getNumber() - 1 == i % (cardsInOneSuit + 1)) {
 				correct++;
 			}
 		}
+		
+		// display a win message, update statistics, and begin a new game
 		if (correct == playGrid.size()) {
 			JOptionPane.showMessageDialog(window,
 					"You have won Carpet Solitaire!");
@@ -123,12 +129,18 @@ public class Main {
 			initCards(true);
 			redrawInPlace();
 		}
+		
+		// this isn't used anywhere in the program, but it seemed reasonable to
+		// leave it in. Maybe it will be useful for a scoring system later.
+		return correct;
 	}
 
 	/**
-	 * Restores all cards to their indexed locations without changing card order
+	 * Restores all cards to their indexed locations without changing order
 	 */
 	public static void redrawInPlace() {
+		// this is a brute-force solution: clear every object from the grid,
+		// then add them all back again in the desired order and repaint
 		playArea.removeAll();
 		for (int i = 0; i < playGrid.size(); i++) {
 			playArea.add(playGrid.get(i));
@@ -138,19 +150,22 @@ public class Main {
 	}
 
 	/**
-	 * Swaps a card with a card at another index
+	 * Swaps the location of two cards and makes that change visible
 	 * 
 	 * @param a is the first card, a CardImage
 	 * @param b the second card, referenced by its location in playArea
 	 */
 	public static void swapCards(CardImage a, CardImage b) {
-
-		// if one or more undos have happened, clear all moves after the current state
+		// only if one or more undos have happened, clear all moves after the
+		// current state, because you should not be able to redo after
+		// making a new move
 		while(gameStates.size() > currentState){
 			gameStates.pop();
 		}
 
 		// record state for undo/redo system
+		// state must be recorded prior to the swap
+		// the undo/redo functions handle states after swaps if they are called
 		gameStates.add(new ArrayList<CardImage>(playGrid));
 		currentState++;
 		
@@ -169,8 +184,8 @@ public class Main {
 	 */
 	public static CardImage getNearest(CardImage it) {
 		double Nearest = 9999.9;
-		// failsafe, if for some reason a nearest card isn't found, swap it with
-		// itself
+		// failsafe, if for some reason a nearest card isn't found,
+		// swap it with itself
 		int indexOfNearest = getCardIndex(it);
 		
 		// look at all cards, pick the one closest to the center of it
@@ -223,9 +238,30 @@ public class Main {
 		shufflesRemaining = 2;
 	}
 	
-	public static void save(){
+	/**
+	 * Saves the current state of the game at the given filepath
+	 * 
+	 * @param filepath is the desired save location and filename.
+	 * The filepath should be valid, since the filechooser is run prior to this
+	 * function, but validity of the filepath is checked just in case.
+	 * @return true if the save file was created successfully; false otherwise
+	 */
+	public static boolean save(File filepath){
 		// TODO
-		System.out.println("Save was called.");
+		return false;
+	}
+	
+	/**
+	 * Loads the current state of the game as the data from filepath
+	 * 
+	 * @param filepath is the desired save file location and filename.
+	 * The filepath should be valid, since the filechooser is run prior to this
+	 * function, but validity of the filepath is checked just in case.
+	 * @return true if the save file was loaded successfully; false otherwise
+	 */
+	public static boolean load(File filepath){
+		// TODO
+		return false;
 	}
 		
 	//=========================================================================
@@ -267,11 +303,14 @@ public class Main {
 		
 		// setup JPanel to hold gray cards (4 by 14 grid of cardImage objects)
 		JPanel grayCards = new JPanel();
-		grayCards.setLayout(new GridLayout(suitsInOneDeck, cardsInOneSuit + 1, CARD_GAP, CARD_GAP));
-		grayCards.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER, BORDER, BORDER));
+		grayCards.setLayout(new GridLayout(suitsInOneDeck, cardsInOneSuit + 1,
+				CARD_GAP, CARD_GAP));
+		grayCards.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER,
+				BORDER, BORDER));
 		grayCards.setLocation(0, 0);
-		grayCards.setSize(((CARD_WIDTH + CARD_GAP) * (cardsInOneSuit + 1)) + BORDER + BORDER,
-				((CARD_HEIGHT + CARD_GAP) * suitsInOneDeck) + BORDER + BORDER);
+		grayCards.setSize(((CARD_WIDTH + CARD_GAP) * (cardsInOneSuit + 1))
+				+ BORDER + BORDER, ((CARD_HEIGHT + CARD_GAP) * suitsInOneDeck)
+				+ BORDER + BORDER);
 		grayCards.setOpaque(false);
 		
 		//add 56 gray cards to JPanel
@@ -280,14 +319,16 @@ public class Main {
 		}
 		
 		// initialize playing cards
-		playArea.setLayout(new GridLayout(suitsInOneDeck, cardsInOneSuit, CARD_GAP, CARD_GAP));
+		playArea.setLayout(new GridLayout(suitsInOneDeck, cardsInOneSuit,
+											CARD_GAP, CARD_GAP));
 		initCards(true);
 		
 		// ensure that cards are always visible over the gray rectangles
 		JLayeredPane playLayers = new JLayeredPane();
 		playLayers.add(grayCards, new Integer(0));
 		playLayers.add(playArea, new Integer(1));
-		playLayers.setPreferredSize(new Dimension(grayCards.getWidth(), grayCards.getHeight()));
+		playLayers.setPreferredSize(
+				new Dimension(grayCards.getWidth(), grayCards.getHeight()));
 		playLayers.setOpaque(false);
 		
 		//initialize statistics
@@ -308,10 +349,7 @@ public class Main {
 		JMenu helpMenu = new JMenu("Help");
 		menubar.add(helpMenu);
 		
-		
-		// setup menu actions
-		// (actions are final only so that they can be called from other ActionListeners)
-		
+		// setup menu actions		
 		// file menu
 		final ActionListener newGame = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
@@ -329,13 +367,15 @@ public class Main {
 		};
 		final ActionListener shuffle = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				//TODO
+				// TODO
+				initCards(true);
 			}
 		};
 		final ActionListener open = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// pick a file
-				final FileNameExtensionFilter xml = new FileNameExtensionFilter("xml files", "xml");
+				final FileNameExtensionFilter xml =
+						new FileNameExtensionFilter("xml files", "xml");
 				final JFileChooser fc = new JFileChooser();
 				fc.setFileFilter(xml);
 				int valid = fc.showOpenDialog(window);
@@ -343,8 +383,15 @@ public class Main {
 					filepath = fc.getSelectedFile();
 				}
 				
-				// TODO: load the data from the file
-				playGrid.clear();
+				// if load returns false, something bad happened
+				if(!load(filepath)){
+					JOptionPane.showMessageDialog(window,
+							"There was a problem loading the game."
+									+ " Please select a different file"
+									+ " and try again.",
+									"Game not loaded.",
+									JOptionPane.ERROR_MESSAGE);
+				}
 				
 				// reset the game state
 				gameStates.clear();
@@ -356,7 +403,8 @@ public class Main {
 		final ActionListener saveAs = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// pick a file
-				final FileNameExtensionFilter xml = new FileNameExtensionFilter("xml files", "xml");
+				final FileNameExtensionFilter xml =
+						new FileNameExtensionFilter("xml files", "xml");
 				final JFileChooser fc = new JFileChooser();
 				fc.setFileFilter(xml);
 				fc.setApproveButtonText("Save");
@@ -364,24 +412,46 @@ public class Main {
 				int valid = fc.showOpenDialog(window);
 				if(valid == JFileChooser.APPROVE_OPTION) {
 					filepath = fc.getSelectedFile();
-					save();
+					
+					// if save returns false, something bad happened
+					if(!save(filepath)){
+						JOptionPane.showMessageDialog(
+										window,
+										"There was a problem saving the game."
+										+ " Please select a different save"
+										+ " location and try again.",
+										"Game not saved.",
+										JOptionPane.ERROR_MESSAGE);
+					}
 				}
+				// if the cancel button was pressed, do nothing
 			}
 		};
 		final ActionListener save = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
+				// save silently only if the filepath has already been set
 				if(!filepath.exists()){
 					saveAs.actionPerformed(arg0);
-				} else {
-					save();
+				// if save returns false, something bad happened
+				} else if(!save(filepath)){
+					JOptionPane.showMessageDialog(
+							window,
+							"There was a problem saving the game."
+									+ " Please select a different save"
+									+ " location and try again.",
+									"Game not saved.",
+									JOptionPane.ERROR_MESSAGE);
 				}
 			}
 		};
 		final ActionListener quit = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				final String[] options = {"Save", "Close Without Saving", "Cancel"};
-				int response = JOptionPane.showOptionDialog(window, // root pane 
-						"Do you want to save the current game before quitting?", // text
+				final String[] options =
+					{"Save", "Close Without Saving", "Cancel"};
+				int response = JOptionPane.showOptionDialog(
+						window, // root pane 
+						"Do you want to save the current game" // text
+						+ "before quitting?",
 						"Quit", // window title
 						JOptionPane.YES_NO_CANCEL_OPTION, // option dialog type
 						JOptionPane.QUESTION_MESSAGE, // icon type
@@ -391,7 +461,7 @@ public class Main {
 				if(response == 0){ // check for "Save" button
 					save.actionPerformed(arg0);
 					System.exit(0);
-				} else if(response == 1){ // check for "Close Without Saving" option
+				} else if(response == 1){ // check for "Close Without Saving"
 					System.exit(0);
 				}
 			}
@@ -400,8 +470,8 @@ public class Main {
 		// edit menu
 		final ActionListener undo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				// if this is the first undo, and if at least one move has been made,
-				// record the state in case we need to redo later
+				// if this is the first undo, and if at least one move has been
+				// made, record the state in case we need to redo later
 				if(gameStates.size() == currentState && currentState > 0){
 					gameStates.add(new ArrayList<CardImage>(playGrid));
 				}
@@ -426,11 +496,12 @@ public class Main {
 			public void actionPerformed(ActionEvent arg0) {
 				// keep displaying this dialog until "Close" is pressed
 				while(JOptionPane.showOptionDialog(window, // root pane
-						"Statistics for this session:\n\n"
+						"Statistics for this session:\n\n" // text
 						+ "Games Played: " + gamesPlayed + "\n"
 						+ "Games Won: " + gamesWon + "\n"
-						+ "Percent Won: " + (((float)gamesWon) / (gamesPlayed) * 100) + "%\n\n"
-						+ "Statistics will be reset when you quit the game.", // text
+						+ "Percent Won: "
+						+ (((float)gamesWon) / (gamesPlayed) * 100) + "%\n\n"
+						+ "Statistics will be reset when you quit the game.",
 						"Statistics", // window title
 						JOptionPane.DEFAULT_OPTION, // option dialog type
 						JOptionPane.PLAIN_MESSAGE, // icon type
@@ -447,30 +518,32 @@ public class Main {
 		//help menu
 		final ActionListener rules = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				JOptionPane.showMessageDialog(window, "Rules:"
-						+ "\n\nThe game is won when all 13 cards of each suit are in order"
-						+ "\nfrom left to right, with the blank space on the far right."
-						+ "\nThe order of the suits does not matter."
-						+ "\nCards can only be moved onto blank spaces,"
-						+ "\nand only if the move is legal."
-						+ "\n\nA legal move consists of one of the following:"
-						+ "\nMoving an Ace to the farthest left spot to begin a row."
-						+ "\nMoving a card to the blank space directly to the right of"
-						+ "\nthe card that has the same suit and a face value one less"
-						+ "\nthan the card being moved."
-						+ "\nNo card can be moved to the right of a King or a blank space."
-						+ "\n\nIf no more legal moves are possible, the cards that are not"
-						+ "\nyet in their correct positions can be shuffled by selecting"
-						+ "\nShuffle from the File menu.");
+				JOptionPane.showMessageDialog(window,
+			"The game is won when all 13 cards of each suit are in order"
+			+ "\nfrom left to right, with the blank space on the far right."
+			+ "\nThe vertical order of the suits does not matter."
+			+ "\nCards can only be moved onto blank spaces,"
+			+ "\nand only if the move is legal."
+			+ "\n\nA legal move consists of one of the following:"
+			+ "\nMoving an Ace to the farthest left spot to begin a row."
+			+ "\nMoving a card to the blank space directly to the right of"
+			+ "\nthe card that has the same suit and a face value one less"
+			+ "\nthan the card being moved.\n"
+			+ "\nNo card can be moved to the right of a King or a blank space."
+			+ "\n\nIf no more legal moves are possible, the cards that are not"
+			+ "\nyet in their correct positions can be shuffled by selecting"
+			+ "\nShuffle from the File menu.",
+			"Rules", JOptionPane.PLAIN_MESSAGE);
 			}
 		};
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv3.1.6"
+						+ "\nv3.1.7"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
-						+ "\nhttp://git.io/hy6V");
+						+ "\nhttp://git.io/hy6V",
+						"About", JOptionPane.INFORMATION_MESSAGE);
 			}
 		};
 		
@@ -478,44 +551,56 @@ public class Main {
 		// file menu items
 		JMenuItem newGameItem = new JMenuItem("New Game");
 		newGameItem.addActionListener(newGame);
-		newGameItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, ActionEvent.CTRL_MASK));
+		newGameItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N,
+				ActionEvent.CTRL_MASK));
 		JMenuItem replayItem = new JMenuItem("Replay");
 		replayItem.addActionListener(replay);
-		replayItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, ActionEvent.CTRL_MASK));
+		replayItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R,
+				ActionEvent.CTRL_MASK));
 		JMenuItem shuffleItem = new JMenuItem("Shuffle");
 		shuffleItem.addActionListener(shuffle);
-		shuffleItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, ActionEvent.CTRL_MASK));
+		shuffleItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E,
+				ActionEvent.CTRL_MASK));
 		JMenuItem openItem = new JMenuItem("Open...");
 		openItem.addActionListener(open);
-		openItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
+		openItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O,
+				ActionEvent.CTRL_MASK));
 		JMenuItem saveItem = new JMenuItem("Save");
 		saveItem.addActionListener(save);
-		saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
+		saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,
+				ActionEvent.CTRL_MASK));
 		JMenuItem saveAsItem = new JMenuItem("Save As...");
 		saveAsItem.addActionListener(saveAs);
-		saveAsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK + ActionEvent.SHIFT_MASK));
+		saveAsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,
+				ActionEvent.CTRL_MASK + ActionEvent.SHIFT_MASK));
 		JMenuItem quitItem = new JMenuItem("Quit");
 		quitItem.addActionListener(quit);
-		quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
+		quitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q,
+				ActionEvent.CTRL_MASK));
 		
 		// edit menu items
 		JMenuItem undoItem = new JMenuItem("Undo");
 		undoItem.addActionListener(undo);
-		undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, ActionEvent.CTRL_MASK));
+		undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z,
+				ActionEvent.CTRL_MASK));
 		JMenuItem redoItem = new JMenuItem("Redo");
 		redoItem.addActionListener(redo);
-		redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, ActionEvent.CTRL_MASK));
+		redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y,
+				ActionEvent.CTRL_MASK));
 		JMenuItem statsItem = new JMenuItem("Statistics...");
 		statsItem.addActionListener(stats);
-		statsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, ActionEvent.CTRL_MASK));
-		
+		statsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T,
+				ActionEvent.CTRL_MASK));
+
 		// help menu items
 		JMenuItem rulesItem = new JMenuItem("Rules...");
 		rulesItem.addActionListener(rules);
-		rulesItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, ActionEvent.CTRL_MASK));
+		rulesItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H,
+				ActionEvent.CTRL_MASK));
 		JMenuItem aboutItem = new JMenuItem("About...");
 		aboutItem.addActionListener(about);
-		aboutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, ActionEvent.CTRL_MASK));
+		aboutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I,
+				ActionEvent.CTRL_MASK));
 		
 		// add menu items to menus
 		fileMenu.add(newGameItem);
@@ -537,10 +622,12 @@ public class Main {
 		// Window Setup
 		//=====================================================================
 		
-		playArea.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER, BORDER, BORDER));
+		playArea.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER,
+				BORDER, BORDER));
 		playArea.setLocation(0, 0);
-		playArea.setSize(((CARD_WIDTH + CARD_GAP) * (cardsInOneSuit + 1)) + BORDER + BORDER,
-				((CARD_HEIGHT + CARD_GAP) * suitsInOneDeck) + BORDER + BORDER);
+		playArea.setSize(((CARD_WIDTH + CARD_GAP) * (cardsInOneSuit + 1))
+				+ BORDER + BORDER, ((CARD_HEIGHT + CARD_GAP) * suitsInOneDeck)
+				+ BORDER + BORDER);
 		playArea.setOpaque(false);
 		window.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 		window.setLocationByPlatform(true);
