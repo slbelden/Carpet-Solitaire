@@ -29,7 +29,6 @@ import java.io.File;
 /**
  * A carpet solitaire game.
  * Game state can be saved and loaded from a file.
- * Save file also holds statistical information on games played.
  * Unlimited undo functionality for moves prior to shuffling remaining cards.
  * 
  * <p>
