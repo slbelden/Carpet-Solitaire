@@ -14,7 +14,7 @@ import javax.swing.JOptionPane;
  * the object to which it is attached.
  * 
  * @author Stephen
- * @version 2015-03-21
+ * @version 3.1.7b
  */
 public class Drag implements MouseListener, MouseMotionListener {
 	/**
@@ -58,8 +58,8 @@ public class Drag implements MouseListener, MouseMotionListener {
 			Point origin = it.getLocation();
 
 			// cast Points as ints, and move the card
-			int newX = (int) (origin.getX() + mouse.getX() - difference.getX());
-			int newY = (int) (origin.getY() + mouse.getY() - difference.getY());
+			int newX = (int)(origin.getX() + mouse.getX() - difference.getX());
+			int newY = (int)(origin.getY() + mouse.getY() - difference.getY());
 			it.setLocation(newX, newY);
 		}
 	}
@@ -87,14 +87,18 @@ public class Drag implements MouseListener, MouseMotionListener {
 		}
 		
 		// test if this was a standard legal move
-		if (!grayCardAtStart && !thisIsAnAce // these two tests must happen first to prevent exceptions
-				&& Main.getCard(nearestCard.getIndex() - 1).getNumber() == it.getNumber() - 1
-				&& Main.getCard(nearestCard.getIndex() - 1).getSuit() == it.getSuit()) {
+		// these two tests must happen first to prevent exceptions
+		if (!grayCardAtStart && !thisIsAnAce
+				&& Main.getCard(nearestCard.getIndex() - 1).getNumber()
+				== it.getNumber() - 1
+				&& Main.getCard(nearestCard.getIndex() - 1).getSuit()
+				== it.getSuit()) {
 			legalMove = true;
 		}
 		
-		// swap if this move is placing an ace at the start of a row, or is a standard legal move
-		// otherwise, beep and put the card back where it was
+		// swap if this move is placing an ace at the start of a row,
+		// or is a standard legal move otherwise,
+		// beep and put the card back where it was
 		if ((grayCardAtStart && thisIsAnAce) || legalMove) {
 			it.swap(it.getNearest());
 		} else {
@@ -105,7 +109,7 @@ public class Drag implements MouseListener, MouseMotionListener {
 		Main.checkWin();
 	}
 
-	// these methods are not used, but must be defined from the abstract superclass.
+	// these methods are not used, but must be defined from the superclass.
 	public void mouseMoved(MouseEvent arg0) {}
 	public void mouseClicked(MouseEvent e) {}
 	public void mouseEntered(MouseEvent e) {}

@@ -34,7 +34,7 @@ import java.io.File;
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 2015-03-22
+ * @version 3.1.7b
  */
 public class Main {
 	/**
@@ -539,7 +539,7 @@ public class Main {
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv3.1.7"
+						+ "\nv3.1.7b"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
