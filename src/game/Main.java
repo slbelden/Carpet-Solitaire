@@ -3,15 +3,19 @@ package game;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Stack;
 
 import javax.swing.BorderFactory;
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.WindowConstants;
@@ -57,16 +61,24 @@ public class Main {
 	 */
 	public static final Color paleGreen = new Color(100, 200, 100);
 	
-	// frequently used numbers
-	public static final int suitsInOneDeck = 4;
-	public static final int cardsInOneSuit = 13;
-	
 	// data fields that are accessed from more than one function
 	public static final List<CardImage> Deck = new ArrayList<CardImage>();
 	public static final List<CardImage> playGrid = new ArrayList<CardImage>();
 	public static JPanel playArea = new JPanel();
 	public static JFrame window = new JFrame("Cards");
-
+		
+	// frequently used numbers
+	public static final int suitsInOneDeck = 4;
+	public static final int cardsInOneSuit = 13;
+	
+	// fields needed for keeping track of the game state
+	public static short shufflesRemaining;
+	public static Stack<ArrayList<CardImage>> gameStates = new Stack<ArrayList<CardImage>>();
+	
+	//=========================================================================
+	// Functions
+	//=========================================================================
+	
 	/**
 	 * Returns the index of a card in playArea.
 	 * 
@@ -98,7 +110,7 @@ public class Main {
 		if (correct == playGrid.size()) {
 			JOptionPane.showMessageDialog(window,
 					"You have won Carpet Solitaire!");
-			initCards();
+			initCards(true);
 			redrawInPlace();
 		}
 	}
@@ -155,7 +167,7 @@ public class Main {
 	/**
 	 * Sets the cards up in random order, with the gray blanks on the left
 	 */
-	private static void initCards() {
+	private static void initCards(boolean randomize) {
 		// for clarity, here are some values
 		int suitOfGrayCard = 0;
 		int valueOfGrayCard = 14;
@@ -165,7 +177,7 @@ public class Main {
 		playGrid.clear();
 		
 		// initialize the playing cards in random order
-		Collections.shuffle(Deck);
+		if(randomize){ Collections.shuffle(Deck); }
 		for (int i = 0; i < suitsInOneDeck; i++) {
 			// add a gray card at the start of each row
 			playGrid.add(new CardImage("cardImages/gray.gif", suitOfGrayCard,
@@ -179,14 +191,26 @@ public class Main {
 		for (int i = 0; i < playGrid.size(); i++) {
 			playArea.add(playGrid.get(i));
 		}
+		
+		// reset shuffles
+		shufflesRemaining = 2;
 	}
-
+		
+	//=========================================================================
+	// Main
+	//=========================================================================
+	
 	/**
 	 * Builds and displays the card game window.
 	 * 
 	 * @param args is ignored.
 	 */
 	public static void main(String[] args) {
+		
+		//=====================================================================
+		// Card Setup
+		//=====================================================================
+		
 		// define names used for loading
 		final String[] SUITS = { "Spades", "Hearts", "Clubs",
 		"Diamonds" };
@@ -225,7 +249,7 @@ public class Main {
 		
 		// initialize playing cards
 		playArea.setLayout(new GridLayout(suitsInOneDeck, cardsInOneSuit, CARD_GAP, CARD_GAP));
-		initCards();
+		initCards(true);
 		
 		// ensure that cards are always visible over the gray rectangles
 		JLayeredPane playLayers = new JLayeredPane();
@@ -234,16 +258,148 @@ public class Main {
 		playLayers.setPreferredSize(new Dimension(grayCards.getWidth(), grayCards.getHeight()));
 		playLayers.setOpaque(false);
 		
-		// setup menubar
+		//=====================================================================
+		// Menubar Setup
+		//=====================================================================
+		
 		JMenuBar menubar = new JMenuBar();
 		
+		// setup menubar menus
 		JMenu fileMenu = new JMenu("File");
 		menubar.add(fileMenu);
-		
 		JMenu editMenu = new JMenu("Edit");
 		menubar.add(editMenu);
 		
-		// create and display the window
+		// setup menu actions
+		// (actions are final only so that they can be called from other ActionListeners)
+		
+		// file menu
+		final ActionListener newGame = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				initCards(true);
+				redrawInPlace();
+				gameStates.clear();
+			}
+		};
+		final ActionListener replay = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				initCards(false);
+				redrawInPlace();
+				gameStates.clear();
+			}
+		};
+		final ActionListener shuffle = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				//TODO
+			}
+		};
+		final ActionListener open = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				//TODO: open, read, and then CLOSE the file
+			}
+		};
+		final ActionListener save = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				//TODO: if a savefile exists, save.
+				// if a save file does not exist, call saveAs
+			}
+		};
+		final ActionListener saveAs = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				//TODO
+			}
+		};
+		final ActionListener quit = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				final String[] options = {"Save", "Close Without Saving"};
+				if(JOptionPane.showOptionDialog(window, // root pane
+						"Do you want to save the current game before quitting?", // text
+						"Quit", // window title
+						JOptionPane.DEFAULT_OPTION, // option dialog type
+						JOptionPane.QUESTION_MESSAGE, // icon type
+						null, // no custom icon
+						options, // button text
+						options[0]) // default option
+						== 1){ // test for second button
+					System.exit(0);
+				} else {
+					save.actionPerformed(arg0);
+					System.exit(0);
+				}
+			}
+		};
+		
+		//edit menu
+		final ActionListener undo = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				//TODO
+			}
+		};
+		final ActionListener redo = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				//TODO
+			}
+		};
+		final String[] options = {"Close", "Reset Statistics"};
+		final ActionListener stats = new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				// keep displaying this dialog until "Close" is pressed
+				while(JOptionPane.showOptionDialog(window, // root pane
+						"stats:\notherstats\nStatistics are stored in your save file.", // text
+						"Statistics", // window title
+						JOptionPane.DEFAULT_OPTION, // option dialog type
+						JOptionPane.PLAIN_MESSAGE, // icon type
+						null, // no custom icon
+						options, // button text
+						options[0]) // default option
+						== 1){ // test for second button
+					//TODO: clear statistics from file
+				}
+			}
+		};
+		
+		// setup menu items
+		// file menu items
+		JMenuItem newGameItem = new JMenuItem("New Game");
+		newGameItem.addActionListener(newGame);
+		JMenuItem replayItem = new JMenuItem("Replay");
+		replayItem.addActionListener(replay);
+		JMenuItem shuffleItem = new JMenuItem("Shuffle");
+		shuffleItem.addActionListener(shuffle);
+		JMenuItem openItem = new JMenuItem("Open...");
+		openItem.addActionListener(open);
+		JMenuItem saveItem = new JMenuItem("Save");
+		saveItem.addActionListener(save);
+		JMenuItem saveAsItem = new JMenuItem("Save As...");
+		saveAsItem.addActionListener(saveAs);
+		JMenuItem quitItem = new JMenuItem("Quit");
+		quitItem.addActionListener(quit);
+		
+		// edit menu items
+		JMenuItem undoItem = new JMenuItem("Undo");
+		undoItem.addActionListener(undo);
+		JMenuItem redoItem = new JMenuItem("Redo");
+		redoItem.addActionListener(redo);
+		JMenuItem statsItem = new JMenuItem("Statistics...");
+		statsItem.addActionListener(stats);
+		
+		// add menu items to menus
+		fileMenu.add(newGameItem);
+		fileMenu.add(replayItem);
+		fileMenu.add(shuffleItem);
+		fileMenu.add(openItem);
+		fileMenu.add(saveItem);
+		fileMenu.add(saveAsItem);
+		fileMenu.add(quitItem);
+		
+		editMenu.add(undoItem);
+		editMenu.add(redoItem);
+		editMenu.add(statsItem);
+		
+		//=====================================================================
+		// Window Setup
+		//=====================================================================
+		
 		playArea.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER, BORDER, BORDER));
 		playArea.setLocation(0, 0);
 		playArea.setSize(((CARD_WIDTH + CARD_GAP) * (cardsInOneSuit + 1)) + BORDER + BORDER,
