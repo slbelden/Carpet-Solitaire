@@ -37,7 +37,6 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.io.File;
-import java.io.PrintWriter;
 
 /**
  * A carpet solitaire game.
@@ -47,7 +46,7 @@ import java.io.PrintWriter;
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 4.0.0
+ * @version 4.0.1
  */
 public class Main {
 	/**
@@ -105,6 +104,7 @@ public class Main {
 	public static Stack<List<CardImage>> gameStates =
 			new Stack<List<CardImage>>();
 	public static int currentState;
+	public static int[] shuffleLocations = new int[2];
 	public static int gamesPlayed;
 	public static int gamesWon;
 	
@@ -566,6 +566,7 @@ public class Main {
 				if(shufflesRemaining > 0){
 					// for undo/redo system
 					recordMove();
+					shuffleLocations[2 - shufflesRemaining] = currentState;
 					
 					// create an array of 56 booleans, representing playGrid
 					// (entries are true if a card is in a winning position)
@@ -820,6 +821,12 @@ public class Main {
 					System.out.println(", currentState = " + currentState);
 					System.out.println();
 				}
+				// if this is undoing a shuffle, add one to shufflesRemaining
+				if(currentState == shuffleLocations[0] ||
+						currentState == shuffleLocations[1]){
+					shufflesRemaining++;
+				}
+				
 				// if this is the first undo, and if at least one move has been
 				// made, record the state in case we need to redo later
 				if(gameStates.size() == currentState && currentState > 0){
@@ -841,6 +848,7 @@ public class Main {
 						System.out.println();
 					}
 				}
+				
 				redrawInPlace();
 			}
 		};
@@ -851,16 +859,25 @@ public class Main {
 			public void actionPerformed(ActionEvent arg0) {
 				if(debug){
 					System.out.println("At the start of redo():");
-					System.out.print("gameStates.size() = " + gameStates.size());
+					System.out.print("gameStates.size() = " +
+					gameStates.size());
 					System.out.println(", currentState = " + currentState);
 					System.out.println();
+				}
+				
+				// if this is redoing a shuffle, subtract one
+				// from shufflesRemaining
+				if(currentState == shuffleLocations[0] ||
+						currentState == shuffleLocations[1]){
+					shufflesRemaining--;
 				}
 				if(gameStates.size() > currentState + 1){
 					currentState++;
 					playGrid = gameStates.get(currentState);
 					if(debug){
 						System.out.println("After successfull redo:");
-						System.out.print("gameStates.size() = " + gameStates.size());
+						System.out.print("gameStates.size() = " +
+						gameStates.size());
 						System.out.println(", currentState = " + currentState);
 						System.out.println();
 					}
@@ -928,7 +945,7 @@ public class Main {
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv4.0.0"
+						+ "\nv4.0.1"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
