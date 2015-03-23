@@ -29,14 +29,18 @@ import java.io.File;
 /**
  * A carpet solitaire game.
  * Game state can be saved and loaded from a file.
- * Unlimited undo functionality for moves prior to shuffling remaining cards.
+ * Unlimited undo functionality, redo is allowed until a new move is made
  * 
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 3.1.7b
+ * @version 3.1.8
  */
 public class Main {
+	/**
+	 * Set to true to print debug values to the console.
+	 */
+	public static final boolean debug = false;
 	/**
 	 * The number of pixels a single card .gif image takes up horizontally.
 	 * Should always match the actual dimensions of the images being used.
@@ -130,8 +134,11 @@ public class Main {
 			redrawInPlace();
 		}
 		
-		// this isn't used anywhere in the program, but it seemed reasonable to
-		// leave it in. Maybe it will be useful for a scoring system later.
+		// return
+		if(debug) {
+			System.out.println("In checkWin, correct = " + correct);
+			System.out.println();
+			}
 		return correct;
 	}
 
@@ -156,11 +163,39 @@ public class Main {
 	 * @param b the second card, referenced by its location in playArea
 	 */
 	public static void swapCards(CardImage a, CardImage b) {
+		recordMove();
+		
+		// swap
+		Collections.swap(playGrid, getCardIndex(a), getCardIndex(b));
+		
+		if(debug){
+			System.out.println("In swapCards, after the swap:");
+			System.out.print("gameStates.size() = " + gameStates.size());
+			System.out.println(", currentState = " + currentState);
+			System.out.println();
+		}
+
+		// make changes visible
+		redrawInPlace();
+	}
+
+	/**
+	 * Adds the current game state to the undo/redo system, making sure that
+	 * there are no stored game states after this new move
+	 */
+	public static void recordMove() {
 		// only if one or more undos have happened, clear all moves after the
 		// current state, because you should not be able to redo after
 		// making a new move
 		while(gameStates.size() > currentState){
 			gameStates.pop();
+		}
+		
+		if(debug){
+			System.out.println("In recordMove():");
+			System.out.print("gameStates.size() = " + gameStates.size());
+			System.out.println(", currentState = " + currentState);
+			System.out.println();
 		}
 
 		// record state for undo/redo system
@@ -168,12 +203,6 @@ public class Main {
 		// the undo/redo functions handle states after swaps if they are called
 		gameStates.add(new ArrayList<CardImage>(playGrid));
 		currentState++;
-		
-		// swap
-		Collections.swap(playGrid, getCardIndex(a), getCardIndex(b));
-
-		// make changes visible
-		redrawInPlace();
 	}
 
 	/**
@@ -236,6 +265,13 @@ public class Main {
 		
 		// reset shuffles
 		shufflesRemaining = 2;
+		
+		if(debug){
+			System.out.println("At the end of initCards():");
+			System.out.print("gameStates.size() = " + gameStates.size());
+			System.out.println(", currentState = " + currentState);
+			System.out.println();
+		}
 	}
 	
 	/**
@@ -357,18 +393,151 @@ public class Main {
 				initCards(true);
 				redrawInPlace();
 				gamesPlayed++;
+				if(debug){
+					System.out.println("After newGame():");
+					System.out.print("gameStates.size() = " + gameStates.size());
+					System.out.println(", currentState = " + currentState);
+					System.out.println();
+				}
 			}
 		};
 		final ActionListener replay = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				initCards(false);
 				redrawInPlace();
+				if(debug){
+					System.out.println("After replay()");
+					System.out.print("gameStates.size() = " + gameStates.size());
+					System.out.println(", currentState = " + currentState);
+					System.out.println();
+				}
 			}
 		};
+		/**
+		 * Shuffles only the cards that are not already in winning positions.
+		 */
 		final ActionListener shuffle = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				// TODO
-				initCards(true);
+				//if shuffles are allowed, shuffle
+				if(shufflesRemaining > 0){
+					// for undo/redo system
+					recordMove();
+					
+					// create an array of 56 booleans, representing playGrid
+					// (entries are true if a card is in a winning position)
+					final boolean[] winCards = new boolean[56];
+					for(int i = 0; i < winCards.length; i++){
+						if (getCard(i).getNumber() - 1 ==
+								i % (cardsInOneSuit + 1)) {
+							winCards[i] = true;
+							if(debug) {
+								System.out.println("Shuffle: Card " + i +
+										" is correct");
+							}
+						} else {
+							winCards[i] = false;
+							if(debug) {
+								System.out.println("Shuffle: Card " + i +
+										" is NOT CORRECT");
+							}
+						}
+					}
+					
+					// create a collection of non-winning cards
+					// shuffle this collection
+					Stack<CardImage> loserCards = new Stack<CardImage>();
+					for(int i = 0; i < winCards.length; i++){
+						if(!winCards[i]){
+							loserCards.add(playGrid.get(i));
+						}
+					}
+					Collections.shuffle(loserCards);
+					if(debug) {
+						System.out.println("There are " + loserCards.size() +
+								" loserCards after the shuffle");
+					}
+					
+					// extract all of the blank cards from loserCards
+					final Stack<CardImage> blankCards = new Stack<CardImage>();
+					for(int j = 0; j < loserCards.size(); j++){
+						if(loserCards.get(j).getNumber() == 14) {
+							blankCards.add(loserCards.get(j));
+							loserCards.remove(j);
+						}
+					}
+					if(debug && blankCards.size() != 4) {
+						System.out.println("ERROR: Not enough blank"
+								+ " cards were extracted!");
+					}
+					
+					
+					// create a new temporary playing grid
+					// For each spot in the tempGrid, if it's corresponding
+					// winCards entry is true, use the card from the playGrid.
+					// If it's if it's corresponding winCards entry is
+					// false, pull a card from loserCards.
+					// If the spot is the end of a row and it is non-winning,
+					// pull a card from blankCards
+					final List<CardImage> tempGrid = new ArrayList<CardImage>();
+					for(int i = 0; i < 56; i++) {
+						if(winCards[i]){
+							tempGrid.add(playGrid.get(i));
+							if(debug) {
+								System.out.println("Card " + i +
+										" is pulled from winning cards.");
+							}
+						} else {
+							if((i + 1) % 14 == 0) {
+								tempGrid.add(blankCards.pop());
+								if(debug) {
+									System.out.println("Card " + i +
+											" is a blank card.");
+								}
+							} else {
+								tempGrid.add(loserCards.pop());
+								if(debug) {
+									System.out.println("Card " + i +
+											" is pulled from loser cards.");
+								}
+							}
+						}
+						if(debug && (i + 1) != tempGrid.size()) {
+							System.out.println("ERROR: tempGrid is missing at "
+									+ "least one card!");
+						}
+					}
+					
+					// restore the main playGrid if nothing bad happened
+					if(tempGrid.size() == 56) {
+						playGrid = tempGrid;
+					} else {
+						System.out.println("ERROR: Only " + tempGrid.size() +
+								" cards after shuffling.");
+					}
+					redrawInPlace();
+					
+					//shufflesRemaining--;
+				} else {
+					// inform the user if they have run out of shuffles
+					final String[] options =
+						{"New Game", "Restart This Game", "Close"};
+					int response = JOptionPane.showOptionDialog(
+							window, // root pane 
+							"Sorry, you have no shuffles remaining." // text
+							+ "\nOnly two shuffles are allowed per game."
+							+ "\nWould you like to try this game again?",
+							"Can't Shuffle", // window title
+							JOptionPane.YES_NO_CANCEL_OPTION, // dialog type
+							JOptionPane.INFORMATION_MESSAGE, // icon type
+							null, // no custom icon
+							options, // button text
+							options[1]); // default option
+					if(response == 0){ // check for "New Game" button
+						newGame.actionPerformed(arg0);
+					} else if(response == 1){ // check for "Restart"
+						replay.actionPerformed(arg0);
+					}
+				}
 			}
 		};
 		final ActionListener open = new ActionListener(){
@@ -470,23 +639,53 @@ public class Main {
 		// edit menu
 		final ActionListener undo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
+				if(debug){
+					System.out.println("At the start of undo():");
+					System.out.print("gameStates.size() = " + gameStates.size());
+					System.out.println(", currentState = " + currentState);
+					System.out.println();
+				}
 				// if this is the first undo, and if at least one move has been
 				// made, record the state in case we need to redo later
 				if(gameStates.size() == currentState && currentState > 0){
 					gameStates.add(new ArrayList<CardImage>(playGrid));
+					if(debug){
+						System.out.println("After undo state creation:");
+						System.out.print("gameStates.size() = " + gameStates.size());
+						System.out.println(", currentState = " + currentState);
+						System.out.println();
+					}
 				}
 				if(currentState > 0){
 					currentState--;
 					playGrid = gameStates.get(currentState);
+					if(debug){
+						System.out.println("After successfull undo:");
+						System.out.print("gameStates.size() = " + gameStates.size());
+						System.out.println(", currentState = " + currentState);
+						System.out.println();
+					}
 				}
 				redrawInPlace();
 			}
 		};
 		final ActionListener redo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
+				if(debug){
+					System.out.println("At the start of redo():");
+					System.out.print("gameStates.size() = " + gameStates.size());
+					System.out.println(", currentState = " + currentState);
+					System.out.println();
+				}
 				if(gameStates.size() > currentState + 1){
 					currentState++;
 					playGrid = gameStates.get(currentState);
+					if(debug){
+						System.out.println("After successfull redo:");
+						System.out.print("gameStates.size() = " + gameStates.size());
+						System.out.println(", currentState = " + currentState);
+						System.out.println();
+					}
 				}
 				redrawInPlace();
 			}
@@ -532,14 +731,15 @@ public class Main {
 			+ "\nNo card can be moved to the right of a King or a blank space."
 			+ "\n\nIf no more legal moves are possible, the cards that are not"
 			+ "\nyet in their correct positions can be shuffled by selecting"
-			+ "\nShuffle from the File menu.",
+			+ "\nShuffle from the File menu."
+			+ "\nOnly two shuffles are allowed per game.",
 			"Rules", JOptionPane.PLAIN_MESSAGE);
 			}
 		};
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv3.1.7b"
+						+ "\nv3.1.8"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
