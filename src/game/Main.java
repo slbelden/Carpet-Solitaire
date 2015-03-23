@@ -46,7 +46,7 @@ import java.io.File;
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 4.1.1
+ * @version 4.1.2
  */
 public class Main {
 	/**
@@ -663,18 +663,18 @@ public class Main {
 				int valid = fc.showOpenDialog(window);
 				if(valid == JFileChooser.APPROVE_OPTION) {
 					filepath = fc.getSelectedFile();
-				}
-				
-				// if load returns false, something bad happened
-				if(!load(filepath)){
-					JOptionPane.showMessageDialog(window,
-							"There was a problem loading the game."
-									+ " Please select a different file"
-									+ " and try again.",
-									"Game not loaded.",
-									JOptionPane.ERROR_MESSAGE);
-					// if loading fails, reset the filepath to nothing
-					filepath = new File("");
+
+					// if load returns false, something bad happened
+					if(!load(filepath)){
+						JOptionPane.showMessageDialog(window,
+								"There was a problem loading the game."
+										+ " Please select a different file"
+										+ " and try again.",
+										"Game not loaded.",
+										JOptionPane.ERROR_MESSAGE);
+						// if loading fails, reset the filepath to nothing
+						filepath = new File("");
+					}
 				}
 			}
 		};
@@ -872,7 +872,7 @@ public class Main {
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv4.1.1"
+						+ "\nv4.1.2"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
