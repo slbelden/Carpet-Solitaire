@@ -46,7 +46,7 @@ import java.io.File;
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 4.1.0
+ * @version 4.1.1
  */
 public class Main {
 	/**
@@ -97,6 +97,7 @@ public class Main {
 	
 	// fields needed for keeping track of the game state
 	public static int shufflesRemaining;
+	public static int loadedShuffles = -1;
 	public static Stack<List<CardImage>> gameStates =
 			new Stack<List<CardImage>>();
 	public static int currentState;
@@ -399,6 +400,7 @@ public class Main {
 				Node shuffleData = shuffles.item(0);
 				Element shuffle = (Element)shuffleData;
 				shufflesRemaining = new Integer(shuffle.getTextContent());
+				loadedShuffles = new Integer(shuffle.getTextContent());
 			}
 
 			// make changes visible and reset the game state
@@ -502,6 +504,7 @@ public class Main {
 				// create new shuffled game
 				initCards();
 				redrawInPlace();
+				loadedShuffles = -1;
 				gamesPlayed++;
 				
 				// to prevent saving over existing games when a new game starts
@@ -521,7 +524,14 @@ public class Main {
 					gameStates.clear();
 					currentState = 0;
 				}
-				shufflesRemaining = 2;
+
+				// if this is a loaded game, restore the number of shuffles
+				// brought in from the load. If not, give 2 shuffles.
+				if(loadedShuffles >= 0) {
+					shufflesRemaining = loadedShuffles;
+				} else {
+					shufflesRemaining = 2;
+				}
 				redrawInPlace();
 			}
 		};
@@ -862,7 +872,7 @@ public class Main {
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv4.1.0"
+						+ "\nv4.1.1"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
