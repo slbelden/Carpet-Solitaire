@@ -46,13 +46,9 @@ import java.io.File;
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 4.0.1
+ * @version 4.1.0
  */
 public class Main {
-	/**
-	 * Set to true to print debug values to the console.
-	 */
-	public static final boolean debug = true;
 	/**
 	 * The number of pixels a single card .gif image takes up horizontally.
 	 * Should always match the actual dimensions of the images being used.
@@ -100,7 +96,7 @@ public class Main {
 	public static final int cardsInOneSuit = 13;
 	
 	// fields needed for keeping track of the game state
-	public static short shufflesRemaining;
+	public static int shufflesRemaining;
 	public static Stack<List<CardImage>> gameStates =
 			new Stack<List<CardImage>>();
 	public static int currentState;
@@ -157,11 +153,6 @@ public class Main {
 			redrawInPlace();
 		}
 		
-		// return
-		if(debug) {
-			System.out.println("In checkWin, correct = " + correct);
-			System.out.println();
-			}
 		return correct;
 	}
 	
@@ -209,13 +200,6 @@ public class Main {
 		
 		// swap
 		Collections.swap(playGrid, getCardIndex(a), getCardIndex(b));
-		
-		if(debug){
-			System.out.println("In swapCards, after the swap:");
-			System.out.print("gameStates.size() = " + gameStates.size());
-			System.out.println(", currentState = " + currentState);
-			System.out.println();
-		}
 
 		// make changes visible
 		redrawInPlace();
@@ -231,13 +215,6 @@ public class Main {
 		// making a new move
 		while(gameStates.size() > currentState){
 			gameStates.pop();
-		}
-		
-		if(debug){
-			System.out.println("In recordMove():");
-			System.out.print("gameStates.size() = " + gameStates.size());
-			System.out.println(", currentState = " + currentState);
-			System.out.println();
 		}
 
 		// record state for undo/redo system
@@ -303,13 +280,6 @@ public class Main {
 		for (int i = 0; i < playGrid.size(); i++) {
 			playArea.add(playGrid.get(i));
 		}
-		
-		if(debug){
-			System.out.println("At the end of initCards():");
-			System.out.print("gameStates.size() = " + gameStates.size());
-			System.out.println(", currentState = " + currentState);
-			System.out.println();
-		}
 	}
 	
 	/**
@@ -330,6 +300,13 @@ public class Main {
             // setup the initial node
             Element game = saveDoc.createElement("Game");
             saveDoc.appendChild(game);
+            
+            // record shuffles remaining
+            Element shuffle = saveDoc.createElement("Shuffle");
+			game.appendChild(shuffle);
+			Node shuffleData = saveDoc.createTextNode(new Integer(
+					shufflesRemaining).toString());
+			shuffle.appendChild(shuffleData);
             
             // append card information
 			for (int i = 0; i < 56; i++) {
@@ -364,7 +341,7 @@ public class Main {
             // if we get here before throwing an exception, everything worked
         	return true;
         } catch (Exception e){
-        	if(debug) e.printStackTrace();
+        	e.printStackTrace();
         	return false;
         }
 	}
@@ -416,6 +393,12 @@ public class Main {
 					// happened correctly
 					playGrid = loadGrid;
 				}
+				
+				// get shuffles remaining
+				NodeList shuffles = savedGame.getElementsByTagName("Shuffle");
+				Node shuffleData = shuffles.item(0);
+				Element shuffle = (Element)shuffleData;
+				shufflesRemaining = new Integer(shuffle.getTextContent());
 			}
 
 			// make changes visible and reset the game state
@@ -426,7 +409,7 @@ public class Main {
 			// if we get here before throwing an exception, everything worked
 			return true;
 		} catch(Exception e) {
-			if(debug) e.printStackTrace();
+			e.printStackTrace();
 			return false;
 		}
 	}
@@ -520,13 +503,6 @@ public class Main {
 				initCards();
 				redrawInPlace();
 				gamesPlayed++;
-				if(debug){
-					System.out.println("After newGame():");
-					System.out.print("gameStates.size() = " +
-							gameStates.size());
-					System.out.println(", currentState = " + currentState);
-					System.out.println();
-				}
 				
 				// to prevent saving over existing games when a new game starts
 				filepath = new File("");
@@ -544,16 +520,8 @@ public class Main {
 					playGrid = gameStates.get(0);
 					gameStates.clear();
 					currentState = 0;
-					redrawInPlace();
-					if(debug){
-						System.out.println("After replay()");
-						System.out.print("gameStates.size() = " +
-								gameStates.size());
-						System.out.println(", currentState = " +
-								currentState);
-						System.out.println();
-					}
 				}
+				shufflesRemaining = 2;
 				redrawInPlace();
 			}
 		};
@@ -571,20 +539,22 @@ public class Main {
 					// create an array of 56 booleans, representing playGrid
 					// (entries are true if a card is in a winning position)
 					final boolean[] winCards = new boolean[56];
+					int rowSuit = 0;
 					for(int i = 0; i < winCards.length; i++){
+						// if this is an ace at the start of a row, set it as
+						// the suit to compare against
+						if(getCard(i).getNumber() == 1 &&
+								(i % 14) ==0){
+							rowSuit = getCard(i).getSuit();
+						}
+						
+						// test if this card is in a winning position
 						if (getCard(i).getNumber() - 1 ==
-								i % (cardsInOneSuit + 1)) {
+								i % (cardsInOneSuit + 1) &&
+								getCard(i).getSuit() == rowSuit) {
 							winCards[i] = true;
-							if(debug) {
-								System.out.println("Shuffle: Card " + i +
-										" is correct");
-							}
 						} else {
 							winCards[i] = false;
-							if(debug) {
-								System.out.println("Shuffle: Card " + i +
-										" is NOT CORRECT");
-							}
 						}
 					}
 					
@@ -597,10 +567,6 @@ public class Main {
 						}
 					}
 					Collections.shuffle(loserCards);
-					if(debug) {
-						System.out.println("There are " + loserCards.size() +
-								" loserCards");
-					}
 					
 					// extract all of the blank cards from loserCards
 					final Stack<CardImage> blankCards = new Stack<CardImage>();
@@ -629,31 +595,15 @@ public class Main {
 						// card already in winning position
 						if(winCards[i]){
 							tempGrid.add(playGrid.get(i));
-							if(debug) {
-								System.out.println("Card " + i +
-										" is pulled from winning cards.");
-							}
 						} else {
 							// blank card
 							if((i + 1) % 14 == 0) {
 								tempGrid.add(new CardImage(
 										"cardImages/gray.gif", 0, 14, false));
-								if(debug) {
-									System.out.println("Card " + i +
-											" is a blank card.");
-								}
 							} else {
 								// shuffled loser cards
 								tempGrid.add(loserCards.pop());
-								if(debug) {
-									System.out.println("Card " + i +
-											" is pulled from loser cards.");
-								}
 							}
-						}
-						if(debug && (i + 1) != tempGrid.size()) {
-							System.out.println("ERROR: tempGrid is missing at "
-									+ "least one card!");
 						}
 					}
 					
@@ -815,12 +765,6 @@ public class Main {
 		 */
 		final ActionListener undo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				if(debug){
-					System.out.println("At the start of undo():");
-					System.out.print("gameStates.size() = " + gameStates.size());
-					System.out.println(", currentState = " + currentState);
-					System.out.println();
-				}
 				// if this is undoing a shuffle, add one to shufflesRemaining
 				if(currentState == shuffleLocations[0] ||
 						currentState == shuffleLocations[1]){
@@ -831,22 +775,10 @@ public class Main {
 				// made, record the state in case we need to redo later
 				if(gameStates.size() == currentState && currentState > 0){
 					gameStates.add(new ArrayList<CardImage>(playGrid));
-					if(debug){
-						System.out.println("After undo state creation:");
-						System.out.print("gameStates.size() = " + gameStates.size());
-						System.out.println(", currentState = " + currentState);
-						System.out.println();
-					}
 				}
 				if(currentState > 0){
 					currentState--;
 					playGrid = gameStates.get(currentState);
-					if(debug){
-						System.out.println("After successfull undo:");
-						System.out.print("gameStates.size() = " + gameStates.size());
-						System.out.println(", currentState = " + currentState);
-						System.out.println();
-					}
 				}
 				
 				redrawInPlace();
@@ -857,14 +789,6 @@ public class Main {
 		 */
 		final ActionListener redo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				if(debug){
-					System.out.println("At the start of redo():");
-					System.out.print("gameStates.size() = " +
-					gameStates.size());
-					System.out.println(", currentState = " + currentState);
-					System.out.println();
-				}
-				
 				// if this is redoing a shuffle, subtract one
 				// from shufflesRemaining
 				if(currentState == shuffleLocations[0] ||
@@ -874,13 +798,6 @@ public class Main {
 				if(gameStates.size() > currentState + 1){
 					currentState++;
 					playGrid = gameStates.get(currentState);
-					if(debug){
-						System.out.println("After successfull redo:");
-						System.out.print("gameStates.size() = " +
-						gameStates.size());
-						System.out.println(", currentState = " + currentState);
-						System.out.println();
-					}
 				}
 				redrawInPlace();
 			}
@@ -945,7 +862,7 @@ public class Main {
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv4.0.1"
+						+ "\nv4.1.0"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
