@@ -23,8 +23,21 @@ import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.WindowConstants;
 import javax.swing.filechooser.FileNameExtensionFilter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 import java.io.File;
+import java.io.PrintWriter;
 
 /**
  * A carpet solitaire game.
@@ -34,13 +47,13 @@ import java.io.File;
  * http://git.io/hy6V
  * 
  * @author Stephen Belden
- * @version 3.1.8
+ * @version 4.0.0
  */
 public class Main {
 	/**
 	 * Set to true to print debug values to the console.
 	 */
-	public static final boolean debug = false;
+	public static final boolean debug = true;
 	/**
 	 * The number of pixels a single card .gif image takes up horizontally.
 	 * Should always match the actual dimensions of the images being used.
@@ -67,11 +80,21 @@ public class Main {
 	public static final Color paleGreen = new Color(100, 200, 100);
 	
 	// data fields that are accessed from more than one function
+	public static final String[] SUITS = { "Spades", "Hearts", "Clubs",
+	"Diamonds" };
+	public static final String[] NUMBERS = { "ace", "two", "three", "four",
+	"five", "six", "seven", "eight", "nine", "ten", "jack", "queen",
+	"king" };
 	public static List<CardImage> Deck = new ArrayList<CardImage>();
 	public static List<CardImage> playGrid = new ArrayList<CardImage>();
 	public static JPanel playArea = new JPanel();
 	public static JFrame window = new JFrame("Cards");
 	public static File filepath = new File("");
+	
+	// these menu items need to be enabled and disabled from a variety of
+	// places, so they are declared here
+	public static JMenuItem undoItem = new JMenuItem("Undo");
+	public static JMenuItem redoItem = new JMenuItem("Redo");
 		
 	// frequently used numbers
 	public static final int suitsInOneDeck = 4;
@@ -130,7 +153,7 @@ public class Main {
 					"You have won Carpet Solitaire!");
 			gamesPlayed++;
 			gamesWon++;
-			initCards(true);
+			initCards();
 			redrawInPlace();
 		}
 		
@@ -140,6 +163,24 @@ public class Main {
 			System.out.println();
 			}
 		return correct;
+	}
+	
+	/**
+	 * Checks to see if an undo/redo operation is possible, and disables the
+	 * undo/redo menu item if it is not.
+	 */
+	public static void checkUndo(){
+		if(currentState > 0){
+			undoItem.setEnabled(true);
+		} else {
+			undoItem.setEnabled(false);
+		}
+		
+		if(gameStates.size() > currentState + 1){
+			redoItem.setEnabled(true);
+		} else {
+			redoItem.setEnabled(false);
+		}
 	}
 
 	/**
@@ -154,6 +195,7 @@ public class Main {
 		}
 		playArea.revalidate();
 		playArea.repaint();
+		checkUndo();
 	}
 
 	/**
@@ -234,7 +276,7 @@ public class Main {
 	/**
 	 * Sets the cards up in random order, with the gray blanks on the left
 	 */
-	private static void initCards(boolean randomize) {
+	private static void initCards() {
 		// for clarity, here are some values
 		int suitOfGrayCard = 0;
 		int valueOfGrayCard = 14;
@@ -243,9 +285,11 @@ public class Main {
 		// clean up from the last game
 		playGrid.clear();
 		gameStates.clear();
+		currentState = 0;
+		shufflesRemaining = 2;
 		
 		// initialize the playing cards in random order
-		if(randomize){ Collections.shuffle(Deck); }
+		Collections.shuffle(Deck);
 		for (int i = 0; i < suitsInOneDeck; i++) {
 			// add a gray card at the start of each row
 			playGrid.add(new CardImage("cardImages/gray.gif", suitOfGrayCard,
@@ -260,12 +304,6 @@ public class Main {
 			playArea.add(playGrid.get(i));
 		}
 		
-		// initialize the game state
-		currentState = 0;
-		
-		// reset shuffles
-		shufflesRemaining = 2;
-		
 		if(debug){
 			System.out.println("At the end of initCards():");
 			System.out.print("gameStates.size() = " + gameStates.size());
@@ -278,26 +316,119 @@ public class Main {
 	 * Saves the current state of the game at the given filepath
 	 * 
 	 * @param filepath is the desired save location and filename.
-	 * The filepath should be valid, since the filechooser is run prior to this
-	 * function, but validity of the filepath is checked just in case.
 	 * @return true if the save file was created successfully; false otherwise
 	 */
 	public static boolean save(File filepath){
-		// TODO
-		return false;
+		DocumentBuilderFactory xmlFactory =
+				DocumentBuilderFactory.newInstance();
+        DocumentBuilder xmlBuilder;
+        try{
+        	// setup the document
+        	xmlBuilder = xmlFactory.newDocumentBuilder();
+            Document saveDoc = xmlBuilder.newDocument();
+            
+            // setup the initial node
+            Element game = saveDoc.createElement("Game");
+            saveDoc.appendChild(game);
+            
+            // append card information
+			for (int i = 0; i < 56; i++) {
+				Element card = saveDoc.createElement("Card");
+				game.appendChild(card);
+				card.setAttribute("id", new Integer(i).toString());
+
+				Element suit = saveDoc.createElement("Suit");
+				card.appendChild(suit);
+				Node suitData =
+						saveDoc.createTextNode(new Integer(
+								getCard(i).getSuit()).toString());
+				suit.appendChild(suitData);
+
+				Element value = saveDoc.createElement("Value");
+				card.appendChild(value);
+				Node valueData =
+						saveDoc.createTextNode(new Integer(
+								getCard(i).getNumber()).toString());
+				value.appendChild(valueData);
+			}
+            
+            // try to save the document
+            TransformerFactory transformerFactory =
+            		TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            DOMSource source = new DOMSource(saveDoc);
+            StreamResult streamResult =  new StreamResult(filepath);
+            transformer.transform(source, streamResult);
+            
+            // if we get here before throwing an exception, everything worked
+        	return true;
+        } catch (Exception e){
+        	if(debug) e.printStackTrace();
+        	return false;
+        }
 	}
 	
 	/**
 	 * Loads the current state of the game as the data from filepath
 	 * 
 	 * @param filepath is the desired save file location and filename.
-	 * The filepath should be valid, since the filechooser is run prior to this
-	 * function, but validity of the filepath is checked just in case.
 	 * @return true if the save file was loaded successfully; false otherwise
 	 */
 	public static boolean load(File filepath){
-		// TODO
-		return false;
+		try {
+			// create a temporary playing grid for operations
+			List<CardImage> loadGrid = new ArrayList<CardImage>();
+
+			// open xml file
+			DocumentBuilderFactory dbFactory =
+					DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+			Document savedGame = dBuilder.parse(filepath);
+
+			// read xml file
+			NodeList savedCards = savedGame.getElementsByTagName("Card");
+			if(savedCards.getLength() != 56){
+				throw new Exception("Invalid number of cards in xml file.");
+			}
+			for (int i = 0; i < savedCards.getLength(); i++) {
+				Node currentCardData = savedCards.item(i);
+				Element currentCard = (Element)currentCardData;
+				if(i != new Integer(currentCard.getAttribute("id"))){
+					throw new Exception("Invalid xml game file.");
+				}
+
+				// create new cards, and add them to the loadGrid
+				int thisSuit = new Integer(currentCard.getElementsByTagName(
+						"Suit").item(0).getTextContent());
+				int thisValue = new Integer(currentCard.getElementsByTagName(
+						"Value").item(0).getTextContent());
+				if(thisSuit == 0){
+					loadGrid.add(new CardImage(
+							"cardImages/gray.gif", 0, 14, false));
+				} else {
+					loadGrid.add(new CardImage("cardImages/"
+							+ NUMBERS[thisValue - 1] + SUITS[thisSuit - 1] + ".gif",
+							thisSuit, thisValue, true));
+				}
+				if(loadGrid.size() == 56){
+					// write changes to the real playGrid only if loading 
+					// happened correctly
+					playGrid = loadGrid;
+				}
+			}
+
+			// make changes visible and reset the game state
+			redrawInPlace();
+			gameStates.clear();
+			currentState = 0;
+
+			// if we get here before throwing an exception, everything worked
+			return true;
+		} catch(Exception e) {
+			if(debug) e.printStackTrace();
+			return false;
+		}
 	}
 		
 	//=========================================================================
@@ -314,13 +445,6 @@ public class Main {
 		//=====================================================================
 		// Card Setup
 		//=====================================================================
-		
-		// define names used for loading
-		final String[] SUITS = { "Spades", "Hearts", "Clubs",
-		"Diamonds" };
-		final String[] NUMBERS = { "ace", "two", "three", "four",
-		"five", "six", "seven", "eight", "nine", "ten", "jack", "queen",
-		"king" };
 
 		// load images
 		for (int i = 0; i < SUITS.length; i++) {
@@ -334,7 +458,7 @@ public class Main {
 		// setup an ArrayList of 56 gray square images
 		final List<CardImage> grays = new ArrayList<CardImage>();
 		for (int i = 0; i < 56; i++) {
-			grays.add(new CardImage("cardImages/gray.gif", 0, 0, false));
+			grays.add(new CardImage("cardImages/gray.gif", 0, 14, false));
 		}
 		
 		// setup JPanel to hold gray cards (4 by 14 grid of cardImage objects)
@@ -357,7 +481,7 @@ public class Main {
 		// initialize playing cards
 		playArea.setLayout(new GridLayout(suitsInOneDeck, cardsInOneSuit,
 											CARD_GAP, CARD_GAP));
-		initCards(true);
+		initCards();
 		
 		// ensure that cards are always visible over the gray rectangles
 		JLayeredPane playLayers = new JLayeredPane();
@@ -387,30 +511,50 @@ public class Main {
 		
 		// setup menu actions		
 		// file menu
+		/**
+		 * Begins a new game with a newly shuffled deck of cards.
+		 */
 		final ActionListener newGame = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// create new shuffled game
-				initCards(true);
+				initCards();
 				redrawInPlace();
 				gamesPlayed++;
 				if(debug){
 					System.out.println("After newGame():");
-					System.out.print("gameStates.size() = " + gameStates.size());
+					System.out.print("gameStates.size() = " +
+							gameStates.size());
 					System.out.println(", currentState = " + currentState);
 					System.out.println();
 				}
+				
+				// to prevent saving over existing games when a new game starts
+				filepath = new File("");
+				
+				redrawInPlace();
 			}
 		};
+		/**
+		 * Restarts the current game, keeping the initial card order.
+		 */
 		final ActionListener replay = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				initCards(false);
-				redrawInPlace();
-				if(debug){
-					System.out.println("After replay()");
-					System.out.print("gameStates.size() = " + gameStates.size());
-					System.out.println(", currentState = " + currentState);
-					System.out.println();
+				// if the game state hasn't changed yet, don't change anything
+				if(gameStates.size() > 0){
+					playGrid = gameStates.get(0);
+					gameStates.clear();
+					currentState = 0;
+					redrawInPlace();
+					if(debug){
+						System.out.println("After replay()");
+						System.out.print("gameStates.size() = " +
+								gameStates.size());
+						System.out.println(", currentState = " +
+								currentState);
+						System.out.println();
+					}
 				}
+				redrawInPlace();
 			}
 		};
 		/**
@@ -454,22 +598,23 @@ public class Main {
 					Collections.shuffle(loserCards);
 					if(debug) {
 						System.out.println("There are " + loserCards.size() +
-								" loserCards after the shuffle");
+								" loserCards");
 					}
 					
 					// extract all of the blank cards from loserCards
 					final Stack<CardImage> blankCards = new Stack<CardImage>();
-					for(int j = 0; j < loserCards.size(); j++){
-						if(loserCards.get(j).getNumber() == 14) {
+					int j = 0;
+					while(j < loserCards.size()){
+						if(loserCards.get(j).getSuit() == 0){
 							blankCards.add(loserCards.get(j));
 							loserCards.remove(j);
+						} else {
+							// j must only be incremented if a blank card is
+							// NOT found! Otherwise some blank cards may be
+							// skipped.
+							j++;
 						}
 					}
-					if(debug && blankCards.size() != 4) {
-						System.out.println("ERROR: Not enough blank"
-								+ " cards were extracted!");
-					}
-					
 					
 					// create a new temporary playing grid
 					// For each spot in the tempGrid, if it's corresponding
@@ -480,6 +625,7 @@ public class Main {
 					// pull a card from blankCards
 					final List<CardImage> tempGrid = new ArrayList<CardImage>();
 					for(int i = 0; i < 56; i++) {
+						// card already in winning position
 						if(winCards[i]){
 							tempGrid.add(playGrid.get(i));
 							if(debug) {
@@ -487,13 +633,16 @@ public class Main {
 										" is pulled from winning cards.");
 							}
 						} else {
+							// blank card
 							if((i + 1) % 14 == 0) {
-								tempGrid.add(blankCards.pop());
+								tempGrid.add(new CardImage(
+										"cardImages/gray.gif", 0, 14, false));
 								if(debug) {
 									System.out.println("Card " + i +
 											" is a blank card.");
 								}
 							} else {
+								// shuffled loser cards
 								tempGrid.add(loserCards.pop());
 								if(debug) {
 									System.out.println("Card " + i +
@@ -516,7 +665,7 @@ public class Main {
 					}
 					redrawInPlace();
 					
-					//shufflesRemaining--;
+					shufflesRemaining--;
 				} else {
 					// inform the user if they have run out of shuffles
 					final String[] options =
@@ -540,6 +689,9 @@ public class Main {
 				}
 			}
 		};
+		/**
+		 * Asks for the location of a game state file
+		 */
 		final ActionListener open = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// pick a file
@@ -560,15 +712,17 @@ public class Main {
 									+ " and try again.",
 									"Game not loaded.",
 									JOptionPane.ERROR_MESSAGE);
+					// if loading fails, reset the filepath to nothing
+					filepath = new File("");
 				}
-				
-				// reset the game state
-				gameStates.clear();
-				currentState = 0;
 			}
 		};
 		// order of actions here is not the same as in the menu, but saveAs
 		// must be defined before save, since it is used in save
+		/**
+		 * Asks for a location and filename where a game state file will be
+		 * saved.
+		 */
 		final ActionListener saveAs = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// pick a file
@@ -582,6 +736,11 @@ public class Main {
 				if(valid == JFileChooser.APPROVE_OPTION) {
 					filepath = fc.getSelectedFile();
 					
+					// make sure the filename ends in .xml
+					if(!fc.getSelectedFile().getAbsolutePath().endsWith(".xml")){
+					    filepath = new File(fc.getSelectedFile() + ".xml");
+					}
+					
 					// if save returns false, something bad happened
 					if(!save(filepath)){
 						JOptionPane.showMessageDialog(
@@ -591,14 +750,19 @@ public class Main {
 										+ " location and try again.",
 										"Game not saved.",
 										JOptionPane.ERROR_MESSAGE);
+						// if loading saveing, reset the filepath to nothing
+						filepath = new File("");
 					}
 				}
 				// if the cancel button was pressed, do nothing
 			}
 		};
+		/**
+		 * Saves the game silently if the filepath is already set, otherwise
+		 * saveAs is called.
+		 */
 		final ActionListener save = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
-				// save silently only if the filepath has already been set
 				if(!filepath.exists()){
 					saveAs.actionPerformed(arg0);
 				// if save returns false, something bad happened
@@ -610,9 +774,17 @@ public class Main {
 									+ " location and try again.",
 									"Game not saved.",
 									JOptionPane.ERROR_MESSAGE);
+					// if loading fails, reset the filepath to nothing
+					// and prompt to save to a new location
+					filepath = new File("");
+					saveAs.actionPerformed(arg0);
 				}
 			}
 		};
+		/**
+		 * Asks the user if they want to save the current game, then terminates
+		 * the application.
+		 */
 		final ActionListener quit = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				final String[] options =
@@ -637,6 +809,9 @@ public class Main {
 		};
 		
 		// edit menu
+		/**
+		 * Sets the game state back one move, if a previous state exists.
+		 */
 		final ActionListener undo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				if(debug){
@@ -669,6 +844,9 @@ public class Main {
 				redrawInPlace();
 			}
 		};
+		/**
+		 * Sets the game state forward one move, if a newer state exists.
+		 */
 		final ActionListener redo = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				if(debug){
@@ -690,10 +868,15 @@ public class Main {
 				redrawInPlace();
 			}
 		};
-		final String[] buttonOptions = {"Close", "Reset Statistics Now"};
+		/**
+		 * Displays statistics for the current session and allows those
+		 * statistics to be reset.
+		 */
 		final ActionListener stats = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				// keep displaying this dialog until "Close" is pressed
+				final String[] buttonOptions = {"Close",
+						"Reset Statistics Now"};
 				while(JOptionPane.showOptionDialog(window, // root pane
 						"Statistics for this session:\n\n" // text
 						+ "Games Played: " + gamesPlayed + "\n"
@@ -715,6 +898,9 @@ public class Main {
 		};
 		
 		//help menu
+		/**
+		 * Displays the rules of Carpet Solitaire.
+		 */
 		final ActionListener rules = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window,
@@ -736,10 +922,13 @@ public class Main {
 			"Rules", JOptionPane.PLAIN_MESSAGE);
 			}
 		};
+		/**
+		 * Displays info about this program.
+		 */
 		final ActionListener about = new ActionListener(){
 			public void actionPerformed(ActionEvent arg0) {
 				JOptionPane.showMessageDialog(window, "Carpet Solitaire"
-						+ "\nv3.1.8"
+						+ "\nv4.0.0"
 						+ "\n\nStephen Belden"
 						+ "\nsbelden@uwyo.edu"
 						+ "\nhttp://git.io/hy6V",
@@ -779,11 +968,11 @@ public class Main {
 				ActionEvent.CTRL_MASK));
 		
 		// edit menu items
-		JMenuItem undoItem = new JMenuItem("Undo");
+		// undoItem is already declared
 		undoItem.addActionListener(undo);
 		undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z,
 				ActionEvent.CTRL_MASK));
-		JMenuItem redoItem = new JMenuItem("Redo");
+		// redoItem is already declared
 		redoItem.addActionListener(redo);
 		redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y,
 				ActionEvent.CTRL_MASK));
@@ -821,6 +1010,8 @@ public class Main {
 		//=====================================================================
 		// Window Setup
 		//=====================================================================
+		
+		redrawInPlace();
 		
 		playArea.setBorder(BorderFactory.createEmptyBorder(BORDER, BORDER,
 				BORDER, BORDER));
